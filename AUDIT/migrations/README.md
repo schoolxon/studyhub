@@ -4,6 +4,8 @@
 
 Applied this session to database `studyhub_audit` (created 2026-09-07, empty before apply).
 
+0002: `0002_tenants_rls.sql` — `studyhub_app` + tenants FORCE/policy.
+
 ## Rollback
 
 ```bash

@@ -24,7 +24,29 @@
 
 **Production diff:** none.
 
-**Next:** P0-40 — RLS policy on `tenants` (failing test: app role SELECT sees all owner_mobile), plus `CREATE ROLE studyhub_app` (P0-41).
+**Next:** P0-01 still blocked on missing Nest TenantContext (Q-01). Next actionable P0: P0-42 concurrent GiST, then P0-03 superadmin login path, P0-37 rotate Firebase key (human).
+
+---
+
+## Iteration 2 — 2026-09-07 — P0-40 tenants RLS + P0-41 app role
+
+**UNDERSTAND:** Applied catalog had FORCE on student tables but `tenants` relrowsecurity=false. `05` only commented `studyhub_app`. Superuser tests cannot prove RLS.
+
+**PROVE (before 0002):**
+
+```
+FAIL
+ - P0-41 studyhub_app missing (count=0)
+ - P0-41 studyhub_app must be NOSUPERUSER NOBYPASSRLS (got missing)
+ - P0-40 tenants FORCE RLS not true (got false)
+```
+
+**FIX:** `AUDIT/migrations/0002_tenants_rls.sql`; same block copied into `05` so fresh applies match. `04` notes tenants own-row policy + separate platform-admin role.
+
+**VERIFY:** `PASS P0-40/41 tenants FORCE + app role cannot list all libraries`. Prior catalog + GiST tests not re-run this pass (NEW if we skip — re-run below).
+
+**NEW:** none beyond parser bug in test (RESET ROLE swallowed count).
+
 
 ---
 

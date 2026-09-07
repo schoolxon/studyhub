@@ -11,7 +11,7 @@ Evidence date: 2026-09-07. Code snapshot: Vite + React SPA (design-system shell)
 
 | Sev | Open | Verified | Wontfix | Total |
 |-----|------|----------|---------|-------|
-| P0  | 8    | 3        | 0       | 11    |
+| P0  | 5    | 6        | 0       | 11    |
 | P1  | 9    | 7        | 0       | 16    |
 | P2  | 2    | 9        | 0       | 11    |
 | P3  | 1    | 2        | 0       | 3     |
@@ -25,13 +25,13 @@ Evidence date: 2026-09-07. Code snapshot: Vite + React SPA (design-system shell)
 | P0-01 | P0 | RLS | `SET LOCAL` / `set_config(..., true)` outside a transaction does not persist on a pooled connection. | Spec `04` § now requires `$transaction` + `set_config`. **No Nest/Prisma TenantContext exists.** Cannot prove pool leak until an API exists. | OPEN |
 | P0-02 | P0 | RLS | `FORCE ROW LEVEL SECURITY` required; table owner bypasses ENABLE-only RLS. | Scratch `studyhub_audit`: `students.relforcerowsecurity = true`. Non-owner role still missing — **P0-41**. | VERIFIED |
 | P0-03 | P0 | RLS | Super-admin `users.tenant_id IS NULL` breaks `tenant_id = current_setting(...)::uuid`. | `platform_admins` table now exists on `studyhub_audit`. No login/API test yet. | OPEN |
-| P0-04 | P0 | RLS | Every tenant-bearing table needs a policy; child tables need `tenant_id` or parent-only access. | Applied: `invoice_items` and `notification_templates` have FORCE+policies. `tenants` still none — **P0-40**. | OPEN |
+| P0-04 | P0 | RLS | Every tenant-bearing table needs a policy; child tables need `tenant_id` or parent-only access. | Applied DB: every `tenant_id` table has `relrowsecurity`. `invoice_items` included. `notification_templates` custom policy. `tenants` own-row (P0-40). Unfiltered SELECT under app role still needs P0-01 API. | VERIFIED |
 | P0-05 | P0 | Money | All money must be BIGINT paise end-to-end. Any float is P0. | `05` money columns are `BIGINT`. Exception: `invoice_items.tax_rate NUMERIC(5,2)` is a **rate**, not money. **No API/DTOs.** Current UI (`src/pages/Home/Home.jsx`) displays `₹8,400` as a string — no paise contract. | OPEN |
 | P0-06 | P0 | Booking | `no_double_booking` GiST must exist on the **applied** migration and reject concurrent duplicates. | Applied. Sequential overlap INSERT rejected. Two-connection race is **P0-42**. | VERIFIED |
 | P0-36 | P0 | Schema | Schema SQL has never been applied to any database in this repo. All P0 DB guarantees are paper. | Created `studyhub_audit` this session; applied `05` with `ON_ERROR_STOP`. Catalog test PASS. Rollback: `AUDIT/migrations/0001_down.sql` or `DROP DATABASE studyhub_audit`. | VERIFIED |
 | P0-37 | P0 | Secrets | Firebase web config (including `apiKey`) is in git history at `src/firebase/firebase.js`. | `git show HEAD:src/firebase/firebase.js` — `apiKey` present, project `library-seat-booking-sys-7f39b`. File deleted from working tree but still in HEAD. **Rotate / restrict API key.** Do not treat delete-from-disk as a fix. | OPEN |
-| P0-40 | P0 | RLS | `tenants` table is not in the RLS loop. App role with table grants can list every library’s `owner_mobile`. | Applied DB: `tenants` relrowsecurity=f, zero policies. | OPEN |
-| P0-41 | P0 | RLS | `05` never `CREATE ROLE studyhub_app`. FORCE is untested as a non-owner, non-superuser. | `pg_roles` has no `studyhub%` role. postgres superuser bypasses FORCE. | OPEN |
+| P0-40 | P0 | RLS | `tenants` table is not in the RLS loop. App role with table grants can list every library’s `owner_mobile`. | `0002_tenants_rls.sql` + test PASS: without GUC, `studyhub_app` count=0. | VERIFIED |
+| P0-41 | P0 | RLS | `05` never `CREATE ROLE studyhub_app`. FORCE is untested as a non-owner, non-superuser. | Role exists, NOSUPERUSER NOBYPASSRLS, does not own `tenants`. | VERIFIED |
 | P0-42 | P0 | Booking | Concurrent two-connection duplicate allocation not proven. | Sequential overlap PASS (`AUDIT/tests/p0-06-gist-overlap.mjs`). | OPEN |
 
 ---
