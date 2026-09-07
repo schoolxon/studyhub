@@ -1,71 +1,43 @@
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  Navigate,
-} from "react-router-dom";
-import Welcome from "./pages/Auth/Welcome";
-import Login from "./pages/Auth/Login";
-import Signup from "./pages/Auth/SignUp";
-import ForgotPassword from "./pages/Auth/ForgotPassword";
-import RecoverEmail from "./pages/Auth/RecoverEmail";
-import EmailVerification from "./pages/Auth/verifyEmail";
-import { auth } from "./firebase/firebase";
-import Home from "./pages/Home/Home";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { DashboardShell } from "./components/layout/DashboardShell";
 import LandingPage from "./pages/LandingPage";
-import AvailableFloor from "./pages/AvailableFloor/AvailableFloor";
-import AvailableSeat from "./pages/AvailableSeat/AvailableSeat";
-import Profile from "./pages/Profile/Profile";
-import AdminLogin from "./pages/Auth/AdminLogin";
-import AdminDashboard from "./pages/Admin/AdminDashboard";
-import SeatSelectionPage from "./pages/Admin/SeatSelectionPage";
-import Unauthorized from "./pages/Auth/Unauthorized";
-import LiveChatSupport from "./pages/Chat/ChatSupport";
+import Login from "./pages/Auth/Login";
+import SignUp from "./pages/Auth/SignUp";
+import Home from "./pages/Home/Home";
+import PlaceholderPage from "./pages/PlaceholderPage";
 
-// Protected route component to check auth status
-const ProtectedRoute = ({ children }) => {
-  return auth.currentUser ? children : <Navigate to="/login" />;
-};
-
-function App() {
+export default function App() {
   return (
-    <Router>
+    <BrowserRouter>
       <Routes>
         <Route path="/" element={<LandingPage />} />
-        <Route path="/welcome" element={<Welcome />} />
-        <Route path="/signup" element={<Signup />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/email-verification" element={<EmailVerification />} />
-        <Route path="/recover-email" element={<RecoverEmail />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/available-floor" element={<AvailableFloor />} />
-        <Route path="/available-seat" element={<AvailableSeat />} />
-        <Route path="/available-seats/:floorId" element={<AvailableSeat />} />
-        <Route path="/support-chat" element={<LiveChatSupport />} />
-        <Route
-          path="/home"
-          element={
-            // <ProtectedRoute>
-            <Home />
-            // </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/profile"
-          element={
-            <ProtectedRoute>
-              <Profile />
-            </ProtectedRoute>
-          }
-        />
-        <Route path="/admin/login" element={<AdminLogin />} />
-        <Route path="/unauthorized" element={<Unauthorized />} />
-        <Route path="/seat-selection" element={<SeatSelectionPage />} />
-        <Route path="/admin/dashboard" element={<AdminDashboard />} />
-        <Route path="*" element={<Navigate to="/" />} />
+        <Route path="/signup" element={<SignUp />} />
+        <Route path="/app" element={<DashboardShell />}>
+          <Route index element={<Home />} />
+          <Route
+            path="students"
+            element={<PlaceholderPage title="Students" description="Roster, plans, and seat assignment." />}
+          />
+          <Route
+            path="seats"
+            element={<PlaceholderPage title="Seats" description="Floor map, shifts, and occupancy." />}
+          />
+          <Route
+            path="attendance"
+            element={<PlaceholderPage title="Attendance" description="Check-in / check-out for today." />}
+          />
+          <Route
+            path="invoices"
+            element={<PlaceholderPage title="Invoices" description="GST invoices and collections." />}
+          />
+          <Route
+            path="settings"
+            element={<PlaceholderPage title="Settings" description="Branch, shifts, and billing defaults." />}
+          />
+        </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </Router>
+    </BrowserRouter>
   );
 }
-
-export default App;

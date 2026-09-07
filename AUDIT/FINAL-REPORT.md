@@ -45,4 +45,4 @@ Unchanged from spec v1.1: **solo 16–20 weeks** to pilot-ready Nest+Next after 
 
 ## Push
 
-`git push origin main` → **403** (`GDGAAU/Library_Seat_Booking_System` denied to `schoolxon`). Commits stay local until you have write access.
+Pushed to **https://github.com/schoolxon/studyhub** (`origin`). Old GDG remote kept as `gdg-old`.
