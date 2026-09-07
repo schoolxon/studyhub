@@ -6,10 +6,14 @@ import { adminPool, withAdmin, withTenant } from "./db.js";
 import { readAuth, signUser } from "./auth-token.js";
 import { loadState } from "./snapshot.js";
 import {
+  addExpense,
   admitStudent,
   checkIn,
   checkOut,
   collectPayment,
+  loadReceipt,
+  loadReports,
+  removeExpense,
   renewMembership,
   togglePause,
   updateSettings,
@@ -34,6 +38,15 @@ async function tenantState(auth) {
 async function buildApp() {
   const app = Fastify({ logger: true });
   await app.register(cors, { origin: true });
+  app.addContentTypeParser("application/json", { parseAs: "string" }, (request, body, done) => {
+    if (!body) return done(null, {});
+    try {
+      done(null, JSON.parse(body));
+    } catch (error) {
+      error.statusCode = 400;
+      done(error);
+    }
+  });
 
   app.get("/health", async () => ({ ok: true }));
 
@@ -64,6 +77,51 @@ async function buildApp() {
       loadState(client, { tenantId: user.tenant_id, branchId: user.branch_id })
     );
     return { token, state };
+  });
+
+  app.post("/v1/auth/forgot", async (request, reply) => {
+    const email = String(request.body?.email || "").trim().toLowerCase();
+    if (!email) return reply.code(400).send({ error: "Email is required" });
+    const { rows } = await adminPool.query(
+      `SELECT id, email FROM users WHERE lower(email) = $1 AND deleted_at IS NULL AND is_active LIMIT 1`,
+      [email]
+    );
+    if (rows[0]) {
+      const hash = bcrypt.hashSync("123456", 10);
+      await adminPool.query(
+        `INSERT INTO otp_codes (mobile, code_hash, purpose, expires_at)
+         VALUES ($1,$2,'reset', now() + interval '10 minutes')`,
+        [rows[0].email, hash]
+      );
+    }
+    return { ok: true };
+  });
+
+  app.post("/v1/auth/reset", async (request, reply) => {
+    const email = String(request.body?.email || "").trim().toLowerCase();
+    const otp = String(request.body?.otp || "").trim();
+    const password = String(request.body?.password || "");
+    if (!email || !otp || !password) {
+      return reply.code(400).send({ error: "Email, OTP, and new password are required" });
+    }
+    const { rows } = await adminPool.query(
+      `SELECT * FROM otp_codes
+       WHERE mobile = $1 AND purpose = 'reset' AND consumed_at IS NULL AND expires_at > now()
+       ORDER BY created_at DESC LIMIT 1`,
+      [email]
+    );
+    const row = rows[0];
+    if (!row || !bcrypt.compareSync(otp, row.code_hash)) {
+      return reply.code(400).send({ error: "Invalid or expired OTP. Demo code is 123456." });
+    }
+    const hash = bcrypt.hashSync(password, 10);
+    const updated = await adminPool.query(
+      `UPDATE users SET password_hash = $2 WHERE lower(email) = $1 AND deleted_at IS NULL`,
+      [email, hash]
+    );
+    if (!updated.rowCount) return reply.code(404).send({ error: "Account not found" });
+    await adminPool.query(`UPDATE otp_codes SET consumed_at = now() WHERE id = $1`, [row.id]);
+    return { ok: true };
   });
 
   app.post("/v1/auth/signup", async (request, reply) => {
@@ -139,6 +197,12 @@ async function buildApp() {
             );
           }
         }
+        for (const name of ["Rent", "Electricity", "Staff", "Internet", "Supplies", "Other"]) {
+          await client.query(
+            `INSERT INTO expense_categories (tenant_id, name, is_default) VALUES ($1,$2,TRUE)`,
+            [tenant.id, name]
+          );
+        }
         created.branch_id = branch.id;
         created.tenant_id = tenant.id;
         return created;
@@ -189,14 +253,14 @@ async function buildApp() {
 
   app.post("/v1/payments", async (request, reply) => {
     try {
-      await withTenant(request.auth.tid, (client) =>
+      const result = await withTenant(request.auth.tid, (client) =>
         collectPayment(
           client,
           { tenantId: request.auth.tid, branchId: request.auth.bid, userId: request.auth.sub },
           request.body || {}
         )
       );
-      return { state: await tenantState(request.auth) };
+      return { paymentId: result?.paymentId, state: await tenantState(request.auth) };
     } catch (error) {
       return httpError(error, reply);
     }
@@ -256,6 +320,57 @@ async function buildApp() {
         )
       );
       return { state: await tenantState(request.auth) };
+    } catch (error) {
+      return httpError(error, reply);
+    }
+  });
+
+  app.post("/v1/expenses", async (request, reply) => {
+    try {
+      await withTenant(request.auth.tid, (client) =>
+        addExpense(
+          client,
+          { tenantId: request.auth.tid, branchId: request.auth.bid, userId: request.auth.sub },
+          request.body || {}
+        )
+      );
+      return { state: await tenantState(request.auth) };
+    } catch (error) {
+      return httpError(error, reply);
+    }
+  });
+
+  app.delete("/v1/expenses/:id", async (request, reply) => {
+    try {
+      await withTenant(request.auth.tid, (client) => removeExpense(client, { tenantId: request.auth.tid }, request.params.id));
+      return { state: await tenantState(request.auth) };
+    } catch (error) {
+      return httpError(error, reply);
+    }
+  });
+
+  app.get("/v1/reports", async (request, reply) => {
+    try {
+      const to = String(request.query.to || new Date().toLocaleString("en-CA", { timeZone: "Asia/Kolkata" }).slice(0, 10));
+      const fromDefault = new Date(`${to}T00:00:00`);
+      fromDefault.setDate(fromDefault.getDate() - 29);
+      const from = String(
+        request.query.from ||
+          `${fromDefault.getFullYear()}-${String(fromDefault.getMonth() + 1).padStart(2, "0")}-${String(fromDefault.getDate()).padStart(2, "0")}`
+      );
+      const report = await withTenant(request.auth.tid, (client) => loadReports(client, { from, to }));
+      return { report };
+    } catch (error) {
+      return httpError(error, reply);
+    }
+  });
+
+  app.get("/v1/payments/:id/receipt", async (request, reply) => {
+    try {
+      const receipt = await withTenant(request.auth.tid, (client) =>
+        loadReceipt(client, { tenantId: request.auth.tid, paymentId: request.params.id })
+      );
+      return { receipt };
     } catch (error) {
       return httpError(error, reply);
     }

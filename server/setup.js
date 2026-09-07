@@ -93,6 +93,7 @@ export async function ensureDatabase() {
     await admin.query(`GRANT SELECT ON ALL TABLES IN SCHEMA public TO studyhub_app`);
 
     await seedDemo(admin);
+    await ensureExpenseCategories(admin);
   } finally {
     await admin.end();
   }
@@ -249,4 +250,17 @@ async function seedDemo(client) {
      FROM students s WHERE s.mobile IN ('9876500010','9876500001')`,
     [tenantId, branchId, userId]
   );
+}
+
+async function ensureExpenseCategories(client) {
+  await client.query(`
+    INSERT INTO expense_categories (tenant_id, name, is_default)
+    SELECT t.id, c.name, TRUE
+    FROM tenants t
+    CROSS JOIN (VALUES ('Rent'),('Electricity'),('Staff'),('Internet'),('Supplies'),('Other')) AS c(name)
+    WHERE t.deleted_at IS NULL
+      AND NOT EXISTS (
+        SELECT 1 FROM expense_categories e WHERE e.tenant_id = t.id AND e.name = c.name
+      )
+  `);
 }

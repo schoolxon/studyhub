@@ -78,6 +78,7 @@ async function applyFifo(client, { tenantId, studentId, amountPaise, userId, bra
   const result = allocateFifo(open, amountPaise);
   const applied = amountPaise - result.advancePaise;
   let firstInvoiceId = null;
+  let paymentId = null;
 
   for (const inv of result.invoices) {
     if (inv.paid_amount === open.find((o) => o.id === inv.id).paid_amount) continue;
@@ -90,12 +91,13 @@ async function applyFifo(client, { tenantId, studentId, amountPaise, userId, bra
 
   if (applied > 0) {
     const number = await receiptNo(client, { tenantId, branchId });
-    await client.query(
+    const inserted = await client.query(
       `INSERT INTO payments (
          tenant_id, branch_id, student_id, invoice_id, receipt_no, amount, mode, collected_by
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
       [tenantId, branchId, studentId, firstInvoiceId, number, applied, payMode(mode), userId]
     );
+    paymentId = inserted.rows[0].id;
   }
 
   if (result.advancePaise > 0) {
@@ -118,9 +120,10 @@ async function applyFifo(client, { tenantId, studentId, amountPaise, userId, bra
        VALUES ($1,$2,$3,$4,'FIFO leftover')`,
       [tenantId, studentId, result.advancePaise, rows[0].id]
     );
+    if (!paymentId) paymentId = rows[0].id;
   }
 
-  return { applied, advancePaise: result.advancePaise };
+  return { applied, advancePaise: result.advancePaise, paymentId };
 }
 
 export async function admitStudent(client, ctx, body) {
@@ -450,14 +453,189 @@ export async function updateSettings(client, ctx, body) {
       language,
     ]);
   }
+  if (Object.prototype.hasOwnProperty.call(body, "gstin")) {
+    await client.query(`UPDATE tenants SET gstin = $2, updated_at = now() WHERE id = $1`, [
+      ctx.tenantId,
+      String(body.gstin || "").trim() || null,
+    ]);
+  }
   if (branchName) {
     await client.query(`UPDATE branches SET name = $2 WHERE id = $1`, [ctx.branchId, branchName]);
   }
-  if (Number.isInteger(graceDays)) {
+  const extra = {};
+  if (Number.isInteger(graceDays)) extra.grace_days = graceDays;
+  const incoming = body.integrations || {};
+  const keyMap = {
+    msg91AuthKey: "msg91_auth_key",
+    msg91Sender: "msg91_sender",
+    razorpayKeyId: "razorpay_key_id",
+    razorpayKeySecret: "razorpay_key_secret",
+    whatsappToken: "whatsapp_token",
+    whatsappPhoneId: "whatsapp_phone_id",
+  };
+  for (const [field, column] of Object.entries(keyMap)) {
+    const value = String(incoming[field] || "").trim();
+    if (value) extra[column] = value;
+  }
+  if (Object.keys(extra).length) {
     await client.query(
-      `UPDATE tenants SET settings = COALESCE(settings,'{}'::jsonb) || jsonb_build_object('grace_days', $2::int)
-       WHERE id = $1`,
-      [ctx.tenantId, graceDays]
+      `UPDATE tenants SET settings = COALESCE(settings,'{}'::jsonb) || $2::jsonb, updated_at = now() WHERE id = $1`,
+      [ctx.tenantId, JSON.stringify(extra)]
     );
   }
+}
+
+export async function addExpense(client, ctx, body) {
+  const amountPaise = Number.parseInt(body.amountPaise, 10);
+  if (!Number.isInteger(amountPaise) || amountPaise <= 0) {
+    throw Object.assign(new Error("Amount must be a whole rupee"), { statusCode: 400 });
+  }
+  const { rows } = await client.query(
+    `INSERT INTO expenses (
+       tenant_id, branch_id, category_id, amount, expense_date, payment_mode, vendor, note, created_by
+     ) VALUES ($1,$2,$3,$4, COALESCE($5::date, CURRENT_DATE), $6, $7, $8, $9)
+     RETURNING id`,
+    [
+      ctx.tenantId,
+      ctx.branchId,
+      body.categoryId || null,
+      amountPaise,
+      body.expenseDate || null,
+      payMode(body.mode || "cash"),
+      String(body.vendor || "").trim() || null,
+      String(body.note || "").trim() || null,
+      ctx.userId,
+    ]
+  );
+  return rows[0];
+}
+
+export async function removeExpense(client, ctx, id) {
+  const { rowCount } = await client.query(
+    `UPDATE expenses SET deleted_at = now() WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL`,
+    [id, ctx.tenantId]
+  );
+  if (!rowCount) throw Object.assign(new Error("Expense not found"), { statusCode: 404 });
+}
+
+export async function loadReports(client, { from, to }) {
+  const collection = (
+    await client.query(
+      `SELECT mode, COALESCE(SUM(amount),0)::bigint AS total, COUNT(*)::int AS n
+       FROM payments
+       WHERE reversed_at IS NULL
+         AND (paid_at AT TIME ZONE 'Asia/Kolkata')::date BETWEEN $1::date AND $2::date
+       GROUP BY mode
+       ORDER BY mode`,
+      [from, to]
+    )
+  ).rows.map((row) => ({ mode: row.mode, totalPaise: Number(row.total), count: row.n }));
+
+  const collected = collection.reduce((sum, row) => sum + row.totalPaise, 0);
+
+  const dues = (
+    await client.query(
+      `SELECT s.id, s.name, s.mobile, se.seat_no,
+              COALESCE(SUM(i.due_amount),0)::bigint AS due
+       FROM invoices i
+       JOIN students s ON s.id = i.student_id
+       LEFT JOIN LATERAL (
+         SELECT seat_id FROM memberships m WHERE m.student_id = s.id AND m.deleted_at IS NULL
+         ORDER BY m.end_date DESC LIMIT 1
+       ) m ON true
+       LEFT JOIN seats se ON se.id = m.seat_id
+       WHERE i.status IN ('unpaid','partial') AND i.deleted_at IS NULL
+       GROUP BY s.id, s.name, s.mobile, se.seat_no
+       HAVING SUM(i.due_amount) > 0
+       ORDER BY SUM(i.due_amount) DESC`
+    )
+  ).rows.map((row) => ({
+    studentId: row.id,
+    name: row.name,
+    mobile: row.mobile,
+    seatNo: row.seat_no || "",
+    duePaise: Number(row.due),
+  }));
+
+  const admissions = (
+    await client.query(
+      `SELECT s.id, s.name, s.joined_on::text, se.seat_no
+       FROM students s
+       LEFT JOIN LATERAL (
+         SELECT seat_id FROM memberships m WHERE m.student_id = s.id AND m.deleted_at IS NULL
+         ORDER BY m.end_date DESC LIMIT 1
+       ) m ON true
+       LEFT JOIN seats se ON se.id = m.seat_id
+       WHERE s.deleted_at IS NULL AND s.joined_on BETWEEN $1::date AND $2::date
+       ORDER BY s.joined_on DESC`,
+      [from, to]
+    )
+  ).rows.map((row) => ({
+    studentId: row.id,
+    name: row.name,
+    joinedOn: row.joined_on,
+    seatNo: row.seat_no || "",
+  }));
+
+  const spent = (
+    await client.query(
+      `SELECT COALESCE(SUM(amount),0)::bigint AS total
+       FROM expenses
+       WHERE deleted_at IS NULL AND expense_date BETWEEN $1::date AND $2::date`,
+      [from, to]
+    )
+  ).rows[0];
+
+  const expensePaise = Number(spent.total);
+  return {
+    from,
+    to,
+    collection,
+    collectedPaise: collected,
+    expensePaise,
+    profitPaise: collected - expensePaise,
+    dues,
+    duesPaise: dues.reduce((sum, row) => sum + row.duePaise, 0),
+    admissions,
+  };
+}
+
+export async function loadReceipt(client, { tenantId, paymentId }) {
+  const { rows } = await client.query(
+    `SELECT p.id, p.receipt_no, p.amount, p.mode, p.paid_at, p.note,
+            s.name AS student_name, s.mobile, s.student_code,
+            i.invoice_no, se.seat_no,
+            t.name AS library_name, t.gstin, b.name AS branch_name, b.code AS branch_code
+     FROM payments p
+     JOIN students s ON s.id = p.student_id
+     JOIN tenants t ON t.id = p.tenant_id
+     JOIN branches b ON b.id = p.branch_id
+     LEFT JOIN invoices i ON i.id = p.invoice_id
+     LEFT JOIN LATERAL (
+       SELECT seat_id FROM memberships m WHERE m.student_id = s.id AND m.deleted_at IS NULL
+       ORDER BY m.end_date DESC LIMIT 1
+     ) m ON true
+     LEFT JOIN seats se ON se.id = m.seat_id
+     WHERE p.id = $1 AND p.tenant_id = $2`,
+    [paymentId, tenantId]
+  );
+  if (!rows[0]) throw Object.assign(new Error("Receipt not found"), { statusCode: 404 });
+  const row = rows[0];
+  return {
+    id: row.id,
+    receiptNo: row.receipt_no,
+    amountPaise: Number(row.amount),
+    mode: row.mode,
+    paidAt: row.paid_at instanceof Date ? row.paid_at.toISOString() : String(row.paid_at),
+    note: row.note,
+    studentName: row.student_name,
+    mobile: row.mobile,
+    studentCode: row.student_code,
+    invoiceNo: row.invoice_no,
+    seatNo: row.seat_no,
+    libraryName: row.library_name,
+    gstin: row.gstin || "",
+    branchName: row.branch_name,
+    branchCode: row.branch_code,
+  };
 }

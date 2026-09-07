@@ -4,6 +4,13 @@ function hours(start, end) {
   return `${String(start).slice(0, 5)}–${String(end).slice(0, 5)}`;
 }
 
+function maskSecret(value) {
+  const text = String(value || "");
+  if (!text) return { configured: false, hint: "" };
+  if (text.length <= 4) return { configured: true, hint: "saved" };
+  return { configured: true, hint: `••••${text.slice(-4)}` };
+}
+
 function isoDate(value) {
   if (!value) return null;
   if (typeof value === "string") return value.slice(0, 10);
@@ -13,7 +20,7 @@ function isoDate(value) {
 export async function loadState(client, { tenantId, branchId }) {
   const tenant = (
     await client.query(
-      `SELECT t.name, t.language, t.settings, b.name AS branch_name, b.code AS branch_code
+      `SELECT t.name, t.language, t.gstin, t.settings, b.name AS branch_name, b.code AS branch_code
        FROM tenants t
        JOIN branches b ON b.tenant_id = t.id AND b.id = $2
        WHERE t.id = $1`,
@@ -158,7 +165,37 @@ export async function loadState(client, { tenantId, branchId }) {
     date: isoDate(row.attendance_date),
   }));
 
-  const settings = tenant?.settings || {};
+  const expenses = (
+    await client.query(
+      `SELECT e.id, e.amount, e.expense_date, e.payment_mode, e.vendor, e.note, e.category_id, c.name AS category
+       FROM expenses e
+       LEFT JOIN expense_categories c ON c.id = e.category_id
+       WHERE e.tenant_id = $1 AND e.deleted_at IS NULL
+       ORDER BY e.expense_date DESC, e.created_at DESC
+       LIMIT 200`,
+      [tenantId]
+    )
+  ).rows.map((row) => ({
+    id: row.id,
+    amountPaise: Number(row.amount),
+    date: isoDate(row.expense_date),
+    mode: row.payment_mode,
+    vendor: row.vendor || "",
+    note: row.note || "",
+    categoryId: row.category_id,
+    category: row.category || "Other",
+  }));
+
+  const expenseCategories = (
+    await client.query(
+      `SELECT id, name FROM expense_categories WHERE tenant_id = $1 ORDER BY name`,
+      [tenantId]
+    )
+  ).rows;
+
+  const rawSettings = tenant?.settings;
+  const settings =
+    rawSettings && typeof rawSettings === "string" ? JSON.parse(rawSettings) : rawSettings || {};
 
   return {
     libraryName: tenant?.name || "StudyHub",
@@ -166,6 +203,19 @@ export async function loadState(client, { tenantId, branchId }) {
     branchCode: tenant?.branch_code || "MAIN",
     graceDays: Number(settings.grace_days ?? 3),
     language: tenant?.language || "en",
+    gstin: tenant?.gstin || "",
+    integrations: {
+      msg91AuthKey: maskSecret(settings.msg91_auth_key),
+      msg91Sender: settings.msg91_sender
+        ? { configured: true, hint: String(settings.msg91_sender) }
+        : { configured: false, hint: "" },
+      razorpayKeyId: maskSecret(settings.razorpay_key_id),
+      razorpayKeySecret: maskSecret(settings.razorpay_key_secret),
+      whatsappToken: maskSecret(settings.whatsapp_token),
+      whatsappPhoneId: settings.whatsapp_phone_id
+        ? { configured: true, hint: String(settings.whatsapp_phone_id) }
+        : { configured: false, hint: "" },
+    },
     shifts,
     plans,
     seats,
@@ -173,5 +223,7 @@ export async function loadState(client, { tenantId, branchId }) {
     invoices,
     payments,
     attendance,
+    expenses,
+    expenseCategories,
   };
 }

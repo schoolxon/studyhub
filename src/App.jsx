@@ -14,6 +14,9 @@ import StudentDetailPage from "./pages/app/StudentDetailPage";
 import SeatsPage from "./pages/app/SeatsPage";
 import AttendancePage from "./pages/app/AttendancePage";
 import InvoicesPage from "./pages/app/InvoicesPage";
+import ExpensesPage from "./pages/app/ExpensesPage";
+import ReportsPage from "./pages/app/ReportsPage";
+import ReceiptPage from "./pages/app/ReceiptPage";
 import SettingsPage from "./pages/app/SettingsPage";
 
 export default function App() {
@@ -35,6 +38,9 @@ export default function App() {
               <Route path="seats" element={<SeatsPage />} />
               <Route path="attendance" element={<AttendancePage />} />
               <Route path="invoices" element={<InvoicesPage />} />
+              <Route path="expenses" element={<ExpensesPage />} />
+              <Route path="reports" element={<ReportsPage />} />
+              <Route path="receipts/:id" element={<ReceiptPage />} />
               <Route path="settings" element={<SettingsPage />} />
             </Route>
           </Route>

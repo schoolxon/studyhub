@@ -13,6 +13,10 @@ const empty = {
   invoices: [],
   payments: [],
   attendance: [],
+  expenses: [],
+  expenseCategories: [],
+  gstin: "",
+  integrations: {},
 };
 
 const StoreContext = createContext(null);
@@ -98,6 +102,7 @@ export function StoreProvider({ children }) {
   const collectPayment = useCallback(async ({ studentId, amountPaise, mode }) => {
     const data = await api("/v1/payments", { method: "POST", body: { studentId, amountPaise, mode } });
     hydrate(data.state);
+    return data.paymentId;
   }, [hydrate]);
 
   const togglePause = useCallback(async (studentId) => {
@@ -130,6 +135,16 @@ export function StoreProvider({ children }) {
     hydrate(data.state);
   }, [hydrate]);
 
+  const addExpense = useCallback(async (payload) => {
+    const data = await api("/v1/expenses", { method: "POST", body: payload });
+    hydrate(data.state);
+  }, [hydrate]);
+
+  const removeExpense = useCallback(async (id) => {
+    const data = await api(`/v1/expenses/${id}`, { method: "DELETE" });
+    hydrate(data.state);
+  }, [hydrate]);
+
   const value = useMemo(
     () => ({
       ...state,
@@ -149,6 +164,8 @@ export function StoreProvider({ children }) {
       checkIn,
       checkOut,
       updateSettings,
+      addExpense,
+      removeExpense,
     }),
     [
       state,
@@ -167,6 +184,8 @@ export function StoreProvider({ children }) {
       checkIn,
       checkOut,
       updateSettings,
+      addExpense,
+      removeExpense,
     ]
   );
 

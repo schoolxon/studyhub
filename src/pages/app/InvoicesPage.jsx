@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { CollectPaymentModal } from "../../components/billing/CollectPaymentModal";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { Button, PageHeader, PillTabs } from "../../components/ui/ui";
@@ -25,7 +26,7 @@ export default function InvoicesPage() {
     <div className="p-6">
       <PageHeader
         title="Invoices & collections"
-        description={`Today ${formatInr(todayTotal)}. Receipt PDF/thermal is Nest work.`}
+        description={`Today ${formatInr(todayTotal)}. Print a receipt from today's collections.`}
       />
       <PillTabs
         value={tab}
@@ -45,6 +46,7 @@ export default function InvoicesPage() {
               <th>Student</th>
               <th>Mode</th>
               <th>Amount</th>
+              <th />
             </tr>
           </thead>
           <tbody>
@@ -54,6 +56,11 @@ export default function InvoicesPage() {
                 <td>{studentById[row.studentId]?.name || row.studentId}</td>
                 <td>{row.mode}</td>
                 <td>{formatInr(row.amountPaise)}</td>
+                <td>
+                  <Link to={`/app/receipts/${row.id}`} style={{ color: "var(--secondary)" }}>
+                    Print
+                  </Link>
+                </td>
               </tr>
             ))}
           </tbody>

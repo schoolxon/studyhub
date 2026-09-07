@@ -1951,3 +1951,71 @@ body,
     grid-template-columns: repeat(5, minmax(48px, 1fr));
   }
 }
+
+.sh-receipt {
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 24px;
+  background: #fff;
+  border: 1px solid var(--neutral-200);
+  border-radius: 8px;
+}
+
+.sh-receipt-head h1 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.sh-receipt-head p,
+.sh-receipt-foot,
+.sh-receipt-note {
+  margin: 4px 0 0;
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+
+.sh-receipt-no {
+  margin: 16px 0 8px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.sh-receipt-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 16px;
+  margin: 0 0 16px;
+}
+
+.sh-receipt-meta dt {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-foreground);
+}
+
+.sh-receipt-meta dd {
+  margin: 2px 0 0;
+  font-size: 14px;
+}
+
+.sh-receipt-amount {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+@media print {
+  .sh-no-print,
+  .ui-sidebar,
+  .sh-bottom-nav,
+  .sh-demo-banner {
+    display: none !important;
+  }
+
+  .sh-receipt {
+    border: none;
+    max-width: none;
+    margin: 0;
+  }
+}

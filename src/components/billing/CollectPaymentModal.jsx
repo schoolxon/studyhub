@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useStore } from "../../data/StoreContext";
 import { formatInr } from "../../lib/money";
 import { Button, Field, Input, Modal, Select } from "../ui/ui";
 
 export function CollectPaymentModal({ open, onClose, student }) {
+  const navigate = useNavigate();
   const { invoices, collectPayment } = useStore();
   const duePaise = useMemo(() => {
     if (!student) return 0;
@@ -26,10 +28,11 @@ export function CollectPaymentModal({ open, onClose, student }) {
       return;
     }
     try {
-      await collectPayment({ studentId: student.id, amountPaise: readyAmount, mode });
+      const paymentId = await collectPayment({ studentId: student.id, amountPaise: readyAmount, mode });
       setAmount("");
       setError("");
       onClose();
+      if (paymentId) navigate(`/app/receipts/${paymentId}`);
     } catch (err) {
       setError(err.message);
     }

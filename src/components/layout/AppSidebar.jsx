@@ -6,6 +6,8 @@ import {
   Armchair,
   ClipboardCheck,
   Receipt,
+  Wallet,
+  BarChart3,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -30,7 +32,11 @@ const navSections = [
   },
   {
     category: "Billing",
-    items: [{ to: "/app/invoices", label: "Invoices", icon: Receipt }],
+    items: [
+      { to: "/app/invoices", label: "Invoices", icon: Receipt },
+      { to: "/app/expenses", label: "Expenses", icon: Wallet },
+      { to: "/app/reports", label: "Reports", icon: BarChart3 },
+    ],
   },
   {
     category: "System",

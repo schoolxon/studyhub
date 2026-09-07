@@ -148,7 +148,7 @@ export default function Home() {
         open={admitOpen}
         onClose={() => setAdmitOpen(false)}
         onCreated={(created) =>
-          setFlash(`${created.name} on ${created.seatNo}, valid till ${created.endDate}. Receipt is demo-only.`)
+          setFlash(`${created.name} on ${created.seatNo}, valid till ${created.endDate}.`)
         }
       />
       <RenewModal open={Boolean(renewStudent)} onClose={() => setRenewStudent(null)} student={renewStudent} />
