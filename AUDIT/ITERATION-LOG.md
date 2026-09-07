@@ -110,4 +110,10 @@ FAIL p1-0003-schema (tables missing). FIX 0003 + `05`. Date math / status / rene
 
 P0 open = 0 (P0-37 WONTFIX human). P1 open = 0. P2-32 still OPEN (Q-01). Suite 14/14. See `FINAL-REPORT.md`.
 
+---
+
+## Iteration 6 — 2026-09-08 — Vite owner shell (mock data)
+
+Not a Nest rewrite. Replaced placeholder `/app/*` routes with in-memory admission / collect / renew / attendance / seat map. Firebase/MUI deps removed from `package.json`. Firebase `apiKey` still in git history (Q-05). CI workflow builds the Vite app only.
+
 

@@ -30,12 +30,14 @@ The plan described RLS, GiST, paise, and numbering, but **nothing was applied**.
 | ID | Why |
 |----|-----|
 | **P2-32 / Q-01** | Vite vs Nest rewrite. Human only. No Nest scaffold invented. |
-| **P0-37 / Q-05** | Firebase `apiKey` in git HEAD. Agent cannot rotate Google keys. **WONTFIX for agent; you must rotate.** |
+| **P0-37 / Q-05** | Firebase `apiKey` **removed from HEAD** (`447b89f`). Still in git history. Agent cannot rotate Google keys. **WONTFIX for agent; you must rotate.** |
 | **P0-01 API half** | SQL hazard is proven. Prisma `$transaction` interceptor does not exist until Q-01. |
 
 ## Honest timeline
 
 Unchanged from spec v1.1: **solo 16–20 weeks** to pilot-ready Nest+Next after Q-01, plus 4-week pilot. Vite shell is not that product.
+
+The Vite app now has clickable owner flows (admission, collect, renew, attendance) on in-memory data. Refresh resets. No HTTP API.
 
 ## Three things most likely to break next
 

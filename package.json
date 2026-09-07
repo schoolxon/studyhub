@@ -1,5 +1,5 @@
 {
-  "name": "zensoc",
+  "name": "studyhub",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -11,15 +11,8 @@
     "test:audit": "node AUDIT/tests/run-all.mjs"
   },
   "dependencies": {
-    "@emotion/react": "^11.14.0",
-    "@emotion/styled": "^11.14.0",
-    "@mui/icons-material": "^6.4.5",
-    "@mui/material": "^6.4.5",
     "@tailwindcss/vite": "^4.0.9",
-    "firebase": "^11.4.0",
-    "framer-motion": "^12.4.10",
     "lucide-react": "^0.476.0",
-    "next": "^15.2.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.2.0"

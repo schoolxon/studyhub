@@ -1,68 +1,155 @@
-import { Users, Armchair, ClipboardCheck, IndianRupee } from "lucide-react";
+import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Armchair, ClipboardCheck, IndianRupee, Users } from "lucide-react";
+import { AdmissionWizard } from "../../components/admissions/AdmissionWizard";
+import { RenewModal } from "../../components/billing/RenewModal";
+import { StatusBadge } from "../../components/ui/StatusBadge";
 import { StatCard } from "../../components/ui/StatCard";
-import { Badge, Card, CardBody, CardHeader } from "../../components/ui/ui";
+import { Alert, Button, Card, CardBody, CardHeader, PageHeader } from "../../components/ui/ui";
+import { SHIFTS, allSeats } from "../../data/seed";
+import { useStore } from "../../data/StoreContext";
+import { formatDay, membershipLabel, todayIso } from "../../lib/dates";
+import { formatInr } from "../../lib/money";
 
 export default function Home() {
+  const navigate = useNavigate();
+  const { students, invoices, payments, attendance, occupiedSeatKeys, branchName } = useStore();
+  const [admitOpen, setAdmitOpen] = useState(false);
+  const [renewStudent, setRenewStudent] = useState(null);
+  const [flash, setFlash] = useState("");
+  const today = todayIso();
+
+  const stats = useMemo(() => {
+    const morningHeld = [...occupiedSeatKeys].filter((key) => key.startsWith("morning:")).length;
+    const checkedIn = attendance.filter((row) => !row.outAt).length;
+    const collected = payments
+      .filter((row) => row.at.startsWith(today))
+      .reduce((sum, row) => sum + row.amountPaise, 0);
+    return { morningHeld, checkedIn, collected };
+  }, [attendance, occupiedSeatKeys, payments, today]);
+
+  const expiring = useMemo(
+    () =>
+      students
+        .map((student) => ({ student, label: membershipLabel(student.endDate, student.paused) }))
+        .filter((row) => row.label === "expiring" || row.label === "overdue"),
+    [students]
+  );
+
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 style={{ margin: 0 }}>Dashboard</h2>
-          <p style={{ margin: "4px 0 0", color: "var(--muted-foreground)" }}>
-            Today&apos;s occupancy and collections
-          </p>
-        </div>
-        <Badge variant="success">Branch: Main</Badge>
-      </div>
+      <PageHeader
+        title="Dashboard"
+        description="Today's occupancy and collections"
+        actions={
+          <>
+            <span className="ui-badge ui-badge-success">Branch: {branchName}</span>
+            <Button variant="primary" onClick={() => setAdmitOpen(true)}>
+              New admission
+            </Button>
+          </>
+        }
+      />
+
+      {flash ? (
+        <Alert variant="success" className="mb-4">
+          {flash}
+        </Alert>
+      ) : null}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
-        <StatCard title="Occupied now" value="42 / 60" subtitle="Morning shift" icon={Armchair} trend="+6" trendUp />
-        <StatCard title="Active students" value="128" icon={Users} iconColor="var(--secondary)" iconBg="var(--secondary-50)" />
-        <StatCard title="Checked in" value="39" icon={ClipboardCheck} iconColor="var(--warning-500)" iconBg="var(--warning-50)" />
-        <StatCard title="Today's collection" value="₹8,400" icon={IndianRupee} />
+        <StatCard
+          title="Occupied now"
+          value={`${stats.morningHeld} / ${allSeats().length}`}
+          subtitle="Morning shift"
+          icon={Armchair}
+          onClick={() => navigate("/app/seats")}
+        />
+        <StatCard
+          title="Active students"
+          value={String(students.filter((s) => !s.paused).length)}
+          icon={Users}
+          iconColor="var(--secondary)"
+          iconBg="var(--secondary-50)"
+          onClick={() => navigate("/app/students")}
+        />
+        <StatCard
+          title="Checked in"
+          value={String(stats.checkedIn)}
+          icon={ClipboardCheck}
+          iconColor="var(--warning-500)"
+          iconBg="var(--warning-50)"
+          onClick={() => navigate("/app/attendance")}
+        />
+        <StatCard
+          title="Today's collection"
+          value={formatInr(stats.collected)}
+          icon={IndianRupee}
+          onClick={() => navigate("/app/invoices")}
+        />
       </div>
 
       <Card>
-        <CardHeader title="Expiring this week" />
+        <CardHeader title="Expiring / overdue" />
         <CardBody>
-          <table className="ui-table">
-            <thead>
-              <tr>
-                <th>Student</th>
-                <th>Seat</th>
-                <th>Expires</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>Riya Sharma</td>
-                <td>A-12</td>
-                <td>09 Sep</td>
-                <td>
-                  <Badge variant="warning">Expiring</Badge>
-                </td>
-              </tr>
-              <tr>
-                <td>Aman Gupta</td>
-                <td>B-04</td>
-                <td>11 Sep</td>
-                <td>
-                  <Badge variant="warning">Expiring</Badge>
-                </td>
-              </tr>
-              <tr>
-                <td>Neha Verma</td>
-                <td>C-21</td>
-                <td>08 Sep</td>
-                <td>
-                  <Badge variant="destructive">Overdue</Badge>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          {expiring.length === 0 ? (
+            <p style={{ margin: 0, color: "var(--muted-foreground)" }}>No memberships in the 7-day window.</p>
+          ) : (
+            <table className="ui-table">
+              <thead>
+                <tr>
+                  <th>Student</th>
+                  <th>Seat</th>
+                  <th>Shift</th>
+                  <th>Expires</th>
+                  <th>Due</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {expiring.map(({ student, label }) => {
+                  const due = invoices
+                    .filter((inv) => inv.studentId === student.id)
+                    .reduce((sum, inv) => sum + (inv.totalPaise - inv.paidPaise), 0);
+                  return (
+                    <tr key={student.id} onClick={() => navigate(`/app/students/${student.id}`)}>
+                      <td>{student.name}</td>
+                      <td>{student.seatNo}</td>
+                      <td>{SHIFTS.find((s) => s.id === student.shiftId)?.name}</td>
+                      <td>{formatDay(student.endDate)}</td>
+                      <td>{formatInr(due)}</td>
+                      <td>
+                        <div className="flex items-center gap-2">
+                          <StatusBadge status={label} />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setRenewStudent(student);
+                            }}
+                          >
+                            Renew
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
         </CardBody>
       </Card>
+
+      <AdmissionWizard
+        open={admitOpen}
+        onClose={() => setAdmitOpen(false)}
+        onCreated={(created) =>
+          setFlash(`${created.name} on ${created.seatNo}, valid till ${created.endDate}. Receipt is demo-only.`)
+        }
+      />
+      <RenewModal open={Boolean(renewStudent)} onClose={() => setRenewStudent(null)} student={renewStudent} />
     </div>
   );
 }

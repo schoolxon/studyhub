@@ -75,6 +75,12 @@ export default function Login() {
           </div>
         </Field>
 
+        <div className="flex justify-end mb-3">
+          <Link to="/forgot-password" className="text-sm font-semibold" style={{ color: "var(--secondary)" }}>
+            Forgot password
+          </Link>
+        </div>
+
         <div style={{ paddingTop: 8 }}>
           <Button type="submit" variant="primary" size="lg" disabled={loading} style={{ width: "100%" }}>
             {loading ? (

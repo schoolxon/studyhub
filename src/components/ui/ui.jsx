@@ -1,4 +1,9 @@
+import { useEffect } from "react";
+import { createPortal } from "react-dom";
+import { X } from "lucide-react";
 import { cn } from "../../lib/utils";
+
+const MODAL_WIDTH = { sm: "420px", md: "520px", lg: "700px", xl: "880px" };
 
 export function Button({
   variant = "primary",
@@ -127,5 +132,85 @@ export function Checkbox({ label, className, id, ...props }) {
       {input}
       {label}
     </label>
+  );
+}
+
+export function Modal({ open, onClose, title, description, size = "lg", footer, children }) {
+  useEffect(() => {
+    if (!open) return undefined;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
+
+  if (!open) return null;
+
+  return createPortal(
+    <div className="ui-modal-overlay">
+      <div
+        className="ui-modal"
+        style={{ width: MODAL_WIDTH[size] ?? MODAL_WIDTH.lg, maxWidth: "calc(100vw - 32px)" }}
+        role="dialog"
+        aria-modal="true"
+      >
+        <div className="ui-modal-header">
+          <span className="ui-modal-title">{title}</span>
+          <button type="button" className="ui-modal-close" onClick={onClose} aria-label="Close">
+            <X size={12} style={{ color: "var(--destructive)" }} />
+          </button>
+        </div>
+        {description ? (
+          <div
+            style={{
+              padding: "8px 15px",
+              borderBottom: "1px solid var(--neutral-200)",
+              fontSize: 12,
+              color: "var(--neutral-500)",
+              backgroundColor: "var(--neutral-50)",
+            }}
+          >
+            {description}
+          </div>
+        ) : null}
+        <div className="ui-modal-body">{children}</div>
+        {footer ? <div className="ui-modal-footer">{footer}</div> : null}
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+export function PillTabs({ value, onChange, items }) {
+  return (
+    <div className="ui-tabs-pill" role="tablist">
+      {items.map((item) => (
+        <button
+          key={item.id}
+          type="button"
+          role="tab"
+          aria-selected={value === item.id}
+          className={cn("ui-tab-pill", value === item.id && "active")}
+          onClick={() => onChange(item.id)}
+        >
+          {item.label}
+          {item.count != null ? ` (${item.count})` : ""}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function PageHeader({ title, description, actions }) {
+  return (
+    <div className="flex items-start justify-between gap-4 mb-6 flex-wrap">
+      <div>
+        <h2 style={{ margin: 0 }}>{title}</h2>
+        {description ? (
+          <p style={{ margin: "4px 0 0", color: "var(--muted-foreground)" }}>{description}</p>
+        ) : null}
+      </div>
+      {actions ? <div className="flex items-center gap-2 flex-wrap">{actions}</div> : null}
+    </div>
   );
 }

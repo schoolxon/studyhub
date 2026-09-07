@@ -20,7 +20,7 @@ export default function SignUp() {
       setErrors(nextErrors);
       return;
     }
-    navigate("/app");
+    navigate("/verify-otp", { state: { next: "/app", mobile: email } });
   };
 
   return (

@@ -30,4 +30,4 @@ Until answered: no Nest scaffold, no Firebase restore.
 
 ## Q-05 — Rotate Firebase web API key?
 
-**Still open. You must do this.** Key is in git HEAD `src/firebase/firebase.js`. Deleting the working tree is not a rotation. P0-37 is WONTFIX for the agent.
+**Still open. You must do this.** The key was deleted from HEAD in `447b89f` (`src/firebase/firebase.js` gone). Deleting the working tree is not a rotation — the key remains in git history. P0-37 is WONTFIX for the agent.

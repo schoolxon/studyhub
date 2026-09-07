@@ -23,7 +23,7 @@ Scratch DB `studyhub_audit`. Suite: `node AUDIT/tests/run-all.mjs`.
 | P0-05 | VERIFIED | no float amount columns; FIFO paise helper |
 | P0-06 | VERIFIED | sequential GiST reject |
 | P0-36 | VERIFIED | 05 applied to studyhub_audit |
-| P0-37 | WONTFIX | Firebase apiKey in git HEAD — human must rotate (Q-05) |
+| P0-37 | WONTFIX | Firebase apiKey removed from HEAD (`447b89f`); still in git history — human must rotate (Q-05) |
 | P0-40 | VERIFIED | tenants FORCE + app role count=0 without GUC |
 | P0-41 | VERIFIED | studyhub_app NOSUPERUSER NOBYPASSRLS |
 | P0-42 | VERIFIED | concurrent two-connection: 1 ok / 1 exclusion |
