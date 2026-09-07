@@ -79,3 +79,35 @@ No Nest/Playwright/typecheck/lint suite exists — those checks N/A.
 
 **HUNT:** `invoice_items` FORCE=on; `notification_templates` FORCE=on; occupancy view has JOIN not CROSS JOIN.
 
+---
+
+## Iteration 2 — P0-40 / P0-41
+
+FAIL before 0002: studyhub_app missing; tenants FORCE false.
+FIX: `0002_tenants_rls.sql` + `05`. PASS p0-40-tenants-rls.
+
+---
+
+## Iteration 3 — P0-42 concurrent GiST
+
+FAIL was “unproven”. FIX: `p0-42-concurrent-gist.mjs`. PASS exactly one insert / one exclusion.
+
+---
+
+## Iteration 4 — P0-01 / P0-03 / P0-05
+
+SET LOCAL SQL session test; users.tenant_id NOT NULL; paise FIFO + schema grep. All PASS.
+
+---
+
+## Iteration 5 — P1 cluster 0003 + date/status/renew/locker
+
+FAIL p1-0003-schema (tables missing). FIX 0003 + `05`. Date math / status / renewal / locker / invoice reuse PASS. 0003_down on fresh DB then DROP.
+
+---
+
+## Stop
+
+P0 open = 0 (P0-37 WONTFIX human). P1 open = 0. P2-32 still OPEN (Q-01). Suite 14/14. See `FINAL-REPORT.md`.
+
+

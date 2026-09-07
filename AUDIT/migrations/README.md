@@ -4,7 +4,8 @@
 
 Applied this session to database `studyhub_audit` (created 2026-09-07, empty before apply).
 
-0002: `0002_tenants_rls.sql` — `studyhub_app` + tenants FORCE/policy.
+0003: `0003_p1_objects.sql` — requests, refresh_tokens, pauses, partial uniques.
+Rollback proven on disposable `studyhub_audit_rb` (dropped after).
 
 ## Rollback
 

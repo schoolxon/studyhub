@@ -253,7 +253,7 @@ lib/
 
 | Job | Schedule | Kaam |
 |---|---|---|
-| `expiry-check` | Roz 6:00 AM | Memberships scan, status update (Active→Expiring→Expired) |
+| `expiry-check` | Roz 6:00 AM | Queue reminders. **Status mat paint karo** — `expiring`/`expired` dates se derive (`07`). |
 | `fee-reminder` | Roz 10:00 AM | 5-din-pehle / due-day / overdue reminders queue karo |
 | `daily-summary` | Roz 9:00 PM | Owner ko WhatsApp summary |
 | `absent-alert` | Roz 8:00 PM | 3+ din absent students → owner |

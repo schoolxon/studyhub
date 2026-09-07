@@ -1,0 +1,12 @@
+DROP POLICY IF EXISTS tenant_isolation ON student_requests;
+DROP POLICY IF EXISTS tenant_isolation ON membership_pauses;
+DROP TABLE IF EXISTS membership_pauses;
+DROP TABLE IF EXISTS student_requests;
+DROP TABLE IF EXISTS refresh_tokens;
+DROP INDEX IF EXISTS idx_invoices_no_alive;
+DROP INDEX IF EXISTS idx_lockers_no_alive;
+ALTER TABLE invoices DROP CONSTRAINT IF EXISTS invoices_tenant_id_invoice_no_key;
+ALTER TABLE invoices ADD CONSTRAINT invoices_tenant_id_invoice_no_key UNIQUE (tenant_id, invoice_no);
+ALTER TABLE lockers DROP CONSTRAINT IF EXISTS lockers_branch_id_locker_no_key;
+ALTER TABLE lockers ADD CONSTRAINT lockers_branch_id_locker_no_key UNIQUE (branch_id, locker_no);
+ALTER TABLE lockers DROP COLUMN IF EXISTS deleted_at;

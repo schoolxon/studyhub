@@ -352,12 +352,11 @@ CREATE TABLE invoices (
     pdf_url             TEXT,
     note                TEXT,
     created_by          UUID REFERENCES users(id),
-    created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
-    deleted_at          TIMESTAMPTZ,
-    UNIQUE (tenant_id, invoice_no)
+    deleted_at          TIMESTAMPTZ
 );
 CREATE INDEX idx_inv_student ON invoices(student_id, invoice_date DESC);
 CREATE INDEX idx_inv_due ON invoices(tenant_id, status) WHERE status IN ('unpaid','partial');
+CREATE UNIQUE INDEX idx_invoices_no_alive ON invoices(tenant_id, invoice_no) WHERE deleted_at IS NULL;
 -- Overdue is NOT a status column — derive: status IN ('unpaid','partial') AND due_date < today
 
 CREATE TABLE invoice_items (
@@ -578,8 +577,10 @@ CREATE TABLE lockers (
     monthly_rent        BIGINT DEFAULT 0,
     key_deposit         BIGINT DEFAULT 0,
     status              TEXT NOT NULL DEFAULT 'available',  -- available|assigned|maintenance
-    UNIQUE (branch_id, locker_no)
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+    deleted_at          TIMESTAMPTZ
 );
+CREATE UNIQUE INDEX idx_lockers_no_alive ON lockers(branch_id, locker_no) WHERE deleted_at IS NULL;
 
 CREATE TABLE locker_assignments (
     id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -665,6 +666,45 @@ CREATE TABLE webhook_events (              -- Razorpay (and later Cashfree) idem
     UNIQUE (provider, event_id)
 );
 
+CREATE TABLE student_requests (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id           UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    branch_id           UUID NOT NULL REFERENCES branches(id),
+    student_id          UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    type                TEXT NOT NULL,     -- seat_change|pause|leave
+    payload             JSONB NOT NULL DEFAULT '{}',
+    status              TEXT NOT NULL DEFAULT 'open',
+    decided_by          UUID REFERENCES users(id),
+    decided_at          TIMESTAMPTZ,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_student_requests_tenant ON student_requests(tenant_id, status);
+
+CREATE TABLE refresh_tokens (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id             UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token_hash          TEXT NOT NULL UNIQUE,
+    expires_at          TIMESTAMPTZ NOT NULL,
+    revoked_at          TIMESTAMPTZ,
+    replaced_by         UUID REFERENCES refresh_tokens(id),
+    user_agent          TEXT,
+    ip_address          INET,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_refresh_user ON refresh_tokens(user_id) WHERE revoked_at IS NULL;
+
+CREATE TABLE membership_pauses (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id           UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    membership_id       UUID NOT NULL REFERENCES memberships(id) ON DELETE CASCADE,
+    paused_from         DATE NOT NULL,
+    resumed_on          DATE,
+    days                INT,
+    hold_charge_paise   BIGINT NOT NULL DEFAULT 0,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_mpause_mem ON membership_pauses(membership_id);
+
 -- ============================================================================
 -- SECTION 12: ROW LEVEL SECURITY (apply to every tenant table)
 -- ============================================================================
@@ -682,7 +722,8 @@ BEGIN
     'student_advances','attendance','expenses','expense_categories',
     'notification_log','notices','leads','waiting_list','lockers',
     'locker_assignments','complaints','activity_logs','files',
-    'subscriptions','saas_invoices','credit_ledger','counters'
+    'subscriptions','saas_invoices','credit_ledger','counters',
+    'student_requests','membership_pauses'
   ]
   LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY;', t);
@@ -709,7 +750,8 @@ CREATE POLICY notif_tpl_write ON notification_templates
   USING (tenant_id = current_setting('app.tenant_id', true)::uuid)
   WITH CHECK (tenant_id = current_setting('app.tenant_id', true)::uuid);
 
--- platform_admins, otp_codes, webhook_events, saas_plans: no tenant RLS
+-- platform_admins, otp_codes, webhook_events, saas_plans, refresh_tokens: no tenant RLS
+-- refresh_tokens is keyed by user_id (tenant via users). Access only as that user.
 -- (webhook_events is platform-wide; access only from worker with app role grants)
 -- tenants: own-row policy (id = GUC), not tenant_id column — see below.
 
