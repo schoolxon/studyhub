@@ -19,16 +19,20 @@ export function CollectPaymentModal({ open, onClose, student }) {
   const readyRupees = amount === "" ? dueRupees : Number.parseInt(amount, 10);
   const readyAmount = Number.isInteger(readyRupees) ? readyRupees * 100 : NaN;
 
-  const submit = () => {
+  const submit = async () => {
     if (!student) return;
     if (!Number.isInteger(readyRupees) || readyRupees <= 0) {
       setError("Amount must be a whole rupee amount.");
       return;
     }
-    collectPayment({ studentId: student.id, amountPaise: readyAmount, mode });
-    setAmount("");
-    setError("");
-    onClose();
+    try {
+      await collectPayment({ studentId: student.id, amountPaise: readyAmount, mode });
+      setAmount("");
+      setError("");
+      onClose();
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
   return (

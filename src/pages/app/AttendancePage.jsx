@@ -1,12 +1,11 @@
 import { useMemo, useState } from "react";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { Button, Input, PageHeader } from "../../components/ui/ui";
-import { SHIFTS } from "../../data/seed";
 import { useStore } from "../../data/StoreContext";
 import { membershipLabel } from "../../lib/dates";
 
 export default function AttendancePage() {
-  const { students, attendance, checkIn, checkOut } = useStore();
+  const { students, attendance, checkIn, checkOut, shifts } = useStore();
   const [query, setQuery] = useState("");
 
   const openByStudent = useMemo(() => {
@@ -53,7 +52,7 @@ export default function AttendancePage() {
               <tr key={student.id}>
                 <td>{student.name}</td>
                 <td>{student.seatNo}</td>
-                <td>{SHIFTS.find((s) => s.id === student.shiftId)?.name}</td>
+                <td>{shifts.find((s) => s.id === student.shiftId)?.name}</td>
                 <td>
                   <StatusBadge status={membershipLabel(student.endDate, student.paused)} />
                 </td>

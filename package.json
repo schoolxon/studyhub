@@ -4,15 +4,24 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently -k \"npm run dev:api\" \"npm run dev:web\"",
+    "dev:web": "vite --host 127.0.0.1 --port 5173",
+    "dev:api": "node server/index.js",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "test:audit": "node AUDIT/tests/run-all.mjs"
   },
   "dependencies": {
+    "@fastify/cors": "^11.3.0",
     "@tailwindcss/vite": "^4.0.9",
+    "bcryptjs": "^3.0.3",
+    "concurrently": "^10.0.5",
+    "dotenv": "^17.4.2",
+    "fastify": "^5.12.3",
+    "jsonwebtoken": "^9.0.3",
     "lucide-react": "^0.476.0",
+    "pg": "^8.23.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.2.0"

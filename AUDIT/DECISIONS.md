@@ -35,9 +35,9 @@ Seed P2-23…P2-28, P2-26 are **VERIFIED in documents**. They are not VERIFIED i
 
 ---
 
-## D-04 — Stack: migrate vs rewrite (OPEN — human)
+## D-04 — Stack: migrate vs rewrite (DECIDED 2026-09-08)
 
-See `OPEN-QUESTIONS.md` Q-01. **This session will not silently pick.**
+User instructed the agent to decide and not stop until the product works. **Choice: Vite + Fastify + Postgres (raw SQL from `05`)**. Nest+Next is deferred. Signup/login bootstrap uses the superuser pool (RLS bypass); every tenant request uses `studyhub_app` + `set_config(..., true)` inside a transaction.
 
 Working analysis (effort, not a choice):
 
@@ -67,4 +67,4 @@ Working analysis (effort, not a choice):
 
 ## D-06 — Tests cannot be greenwashed
 
-There is no API. Playwright tenant-isolation suite **does not exist**. Marking P0 FIXED without a failing-then-passing test against an **applied** database is forbidden. Iteration 1+ must create a scratch DB (`studyhub_audit_*`) — never drop a database this session did not create.
+There is now a Fastify API on Postgres. Playwright tenant-isolation HTTP suite is still **absent**. Do not mark HTTP isolation VERIFIED until that suite exists. Scratch DB rules unchanged: never drop a database this session did not create.

@@ -36,8 +36,8 @@ export default function LandingPage() {
           Seat occupancy, attendance, and billing — without the register book
         </h1>
         <p style={{ fontSize: 16, color: "var(--muted-foreground)", maxWidth: 560 }}>
-          StudyHub is specified as Nest + Next + Postgres. This Vite app is a clickable owner shell
-          with in-memory demo data so you can walk the flows before Q-01.
+          Owner desk for seats, admissions, attendance, and collections. Vite UI talks to a Fastify
+          API on Postgres with FORCE RLS. Nest+Next remains a later rewrite if we outgrow this stack.
         </p>
         <div className="flex gap-3 mt-8 flex-wrap">
           <Link to="/signup">

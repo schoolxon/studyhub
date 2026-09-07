@@ -4,14 +4,13 @@ import { CollectPaymentModal } from "../../components/billing/CollectPaymentModa
 import { RenewModal } from "../../components/billing/RenewModal";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { Button, Card, CardBody, CardHeader, PageHeader } from "../../components/ui/ui";
-import { PLANS, SHIFTS } from "../../data/seed";
 import { useStore } from "../../data/StoreContext";
 import { formatDay, membershipLabel } from "../../lib/dates";
 import { formatInr } from "../../lib/money";
 
 export default function StudentDetailPage() {
   const { id } = useParams();
-  const { students, invoices, attendance, togglePause } = useStore();
+  const { students, invoices, attendance, togglePause, shifts, plans } = useStore();
   const student = students.find((item) => item.id === id);
   const [tab, setTab] = useState("profile");
   const [collectOpen, setCollectOpen] = useState(false);
@@ -27,7 +26,7 @@ export default function StudentDetailPage() {
   if (!student) return <Navigate to="/app/students" replace />;
 
   const label = membershipLabel(student.endDate, student.paused);
-  const plan = PLANS.find((item) => item.id === student.planId);
+  const plan = plans.find((item) => item.id === student.planId);
   const bills = invoices.filter((inv) => inv.studentId === student.id);
   const visits = attendance.filter((row) => row.studentId === student.id);
 
@@ -41,7 +40,7 @@ export default function StudentDetailPage() {
       </p>
       <PageHeader
         title={student.name}
-        description={`${student.seatNo} · ${SHIFTS.find((s) => s.id === student.shiftId)?.name} · ${student.mobile}`}
+        description={`${student.seatNo} · ${shifts.find((s) => s.id === student.shiftId)?.name} · ${student.mobile}`}
         actions={
           <>
             <StatusBadge status={label} />

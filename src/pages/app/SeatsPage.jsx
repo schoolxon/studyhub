@@ -1,12 +1,16 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PageHeader } from "../../components/ui/ui";
-import { COLS, ROWS, SHIFTS, allSeats, seatNo } from "../../data/seed";
 import { useStore } from "../../data/StoreContext";
 
 export default function SeatsPage() {
-  const { students } = useStore();
-  const [shiftId, setShiftId] = useState("morning");
-  const total = allSeats().length;
+  const { students, seats, shifts } = useStore();
+  const [shiftId, setShiftId] = useState("");
+
+  useEffect(() => {
+    if (!shiftId && shifts[0]) setShiftId(shifts[0].id);
+  }, [shiftId, shifts]);
+
+  const total = seats.length;
   const held = students.filter((s) => s.shiftId === shiftId);
   const occupant = (no) => held.find((s) => s.seatNo === no);
 
@@ -14,10 +18,10 @@ export default function SeatsPage() {
     <div className="p-6">
       <PageHeader
         title="Seat map"
-        description={`${held.length} / ${total} held this shift. Click a held seat to see the student.`}
+        description={`${held.length} / ${total} held this shift. Paused students still hold the seat.`}
       />
       <div className="flex flex-wrap gap-2 mb-4">
-        {SHIFTS.map((shift) => (
+        {shifts.map((shift) => (
           <button
             key={shift.id}
             type="button"
@@ -41,22 +45,19 @@ export default function SeatsPage() {
         </span>
       </div>
       <div className="sh-seat-grid">
-        {ROWS.map((row) =>
-          Array.from({ length: COLS }, (_, index) => {
-            const no = seatNo(row, index + 1);
-            const student = occupant(no);
-            return (
-              <div
-                key={no}
-                className={`sh-seat${student ? (student.paused ? " is-paused" : " is-held") : " is-free"}`}
-                title={student ? `${student.name} · ${student.mobile}` : `${no} free`}
-              >
-                {no}
-                {student ? <span>{student.name.split(" ")[0]}</span> : null}
-              </div>
-            );
-          })
-        )}
+        {seats.map((seat) => {
+          const student = occupant(seat.seatNo);
+          return (
+            <div
+              key={seat.id}
+              className={`sh-seat${student ? (student.paused ? " is-paused" : " is-held") : " is-free"}`}
+              title={student ? `${student.name} · ${student.mobile}` : `${seat.seatNo} free`}
+            >
+              {seat.seatNo}
+              {student ? <span>{student.name.split(" ")[0]}</span> : null}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

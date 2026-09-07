@@ -4,14 +4,13 @@ import { AdmissionWizard } from "../../components/admissions/AdmissionWizard";
 import { CollectPaymentModal } from "../../components/billing/CollectPaymentModal";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { Button, Input, PageHeader, PillTabs } from "../../components/ui/ui";
-import { SHIFTS } from "../../data/seed";
 import { useStore } from "../../data/StoreContext";
 import { formatDay, membershipLabel } from "../../lib/dates";
 import { formatInr } from "../../lib/money";
 
 export default function StudentsPage() {
   const navigate = useNavigate();
-  const { students, invoices } = useStore();
+  const { students, invoices, shifts } = useStore();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("all");
   const [admitOpen, setAdmitOpen] = useState(false);
@@ -89,7 +88,7 @@ export default function StudentsPage() {
               <StatusBadge status={label} />
             </div>
             <p style={{ margin: "6px 0 0", color: "var(--muted-foreground)", fontSize: 13 }}>
-              {student.seatNo} · {SHIFTS.find((s) => s.id === student.shiftId)?.name} · till {formatDay(student.endDate)}
+              {student.seatNo} · {shifts.find((s) => s.id === student.shiftId)?.name} · till {formatDay(student.endDate)}
             </p>
             <p style={{ margin: "4px 0 0", fontSize: 13 }}>Due {formatInr(due)}</p>
           </button>
@@ -115,7 +114,7 @@ export default function StudentsPage() {
                 <td>{student.name}</td>
                 <td>{student.mobile}</td>
                 <td>{student.seatNo}</td>
-                <td>{SHIFTS.find((s) => s.id === student.shiftId)?.name}</td>
+                <td>{shifts.find((s) => s.id === student.shiftId)?.name}</td>
                 <td>{formatDay(student.endDate)}</td>
                 <td>
                   <div className="flex items-center gap-2">

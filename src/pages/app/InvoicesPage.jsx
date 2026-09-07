@@ -18,7 +18,7 @@ export default function InvoicesPage() {
   );
 
   const dues = invoices.filter((inv) => inv.paidPaise < inv.totalPaise);
-  const todayPay = payments.filter((row) => row.at.startsWith(today));
+  const todayPay = payments.filter((row) => row.day === today);
   const todayTotal = todayPay.reduce((sum, row) => sum + row.amountPaise, 0);
 
   return (

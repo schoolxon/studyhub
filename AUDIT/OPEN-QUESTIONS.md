@@ -4,9 +4,7 @@
 
 ## Q-01 — Migrate the Vite+Firebase app, or rewrite Nest+Next+Postgres?
 
-**Still open.** Sets every remaining API P0 (Playwright tenant suite, SET LOCAL interceptor).
-
-Until answered: no Nest scaffold, no Firebase restore.
+**DECIDED 2026-09-08 (user: agent decides, ship tonight).** Path B+: keep the Vite owner UI, add Fastify + Postgres (`05` raw SQL, `studyhub_app` + SET LOCAL). Do **not** start Nest+Next tonight — that would leave two half-apps. Nest remains a later option if we outgrow Fastify.
 
 ---
 

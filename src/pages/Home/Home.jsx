@@ -6,27 +6,29 @@ import { RenewModal } from "../../components/billing/RenewModal";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { StatCard } from "../../components/ui/StatCard";
 import { Alert, Button, Card, CardBody, CardHeader, PageHeader } from "../../components/ui/ui";
-import { SHIFTS, allSeats } from "../../data/seed";
 import { useStore } from "../../data/StoreContext";
 import { formatDay, membershipLabel, todayIso } from "../../lib/dates";
 import { formatInr } from "../../lib/money";
 
 export default function Home() {
   const navigate = useNavigate();
-  const { students, invoices, payments, attendance, occupiedSeatKeys, branchName } = useStore();
+  const { students, invoices, payments, attendance, seats, shifts, branchName } = useStore();
   const [admitOpen, setAdmitOpen] = useState(false);
   const [renewStudent, setRenewStudent] = useState(null);
   const [flash, setFlash] = useState("");
   const today = todayIso();
 
   const stats = useMemo(() => {
-    const morningHeld = [...occupiedSeatKeys].filter((key) => key.startsWith("morning:")).length;
+    const morning = shifts.find((shift) => shift.code === "morning");
+    const morningHeld = morning
+      ? students.filter((student) => student.shiftId === morning.id).length
+      : 0;
     const checkedIn = attendance.filter((row) => !row.outAt).length;
     const collected = payments
-      .filter((row) => row.at.startsWith(today))
+      .filter((row) => row.day === today)
       .reduce((sum, row) => sum + row.amountPaise, 0);
-    return { morningHeld, checkedIn, collected };
-  }, [attendance, occupiedSeatKeys, payments, today]);
+    return { morningHeld, checkedIn, collected, seatCount: seats.length };
+  }, [attendance, payments, seats.length, shifts, students, today]);
 
   const expiring = useMemo(
     () =>
@@ -60,7 +62,7 @@ export default function Home() {
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
         <StatCard
           title="Occupied now"
-          value={`${stats.morningHeld} / ${allSeats().length}`}
+          value={`${stats.morningHeld} / ${stats.seatCount}`}
           subtitle="Morning shift"
           icon={Armchair}
           onClick={() => navigate("/app/seats")}
@@ -115,7 +117,7 @@ export default function Home() {
                     <tr key={student.id} onClick={() => navigate(`/app/students/${student.id}`)}>
                       <td>{student.name}</td>
                       <td>{student.seatNo}</td>
-                      <td>{SHIFTS.find((s) => s.id === student.shiftId)?.name}</td>
+                      <td>{shifts.find((s) => s.id === student.shiftId)?.name}</td>
                       <td>{formatDay(student.endDate)}</td>
                       <td>{formatInr(due)}</td>
                       <td>

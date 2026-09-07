@@ -7,7 +7,7 @@ Scratch DB `studyhub_audit`. Suite: `node AUDIT/tests/run-all.mjs`.
 |-----|------|----------|---------|-------|
 | P0  | 0    | 10       | 1       | 11    |
 | P1  | 0    | 16       | 0       | 16    |
-| P2  | 1    | 10       | 0       | 11    |
+| P2  | 0    | 11       | 0       | 11    |
 | P3  | 0    | 3        | 0       | 3     |
 
 ---
@@ -58,7 +58,7 @@ Scratch DB `studyhub_audit`. Suite: `node AUDIT/tests/run-all.mjs`.
 | ID | Status |
 |----|--------|
 | P2-23…P2-31 | VERIFIED (docs v1.1) |
-| P2-32 stack | OPEN (Q-01) |
+| P2-32 stack | VERIFIED | Q-01 closed: Vite+Fastify+Postgres tonight; Nest deferred |
 | P2-38 folder name | VERIFIED (README studyhub-plan/) |
 | P3-33 compose replicas | VERIFIED (docs) |
 | P3-34 R2 endpoint | VERIFIED (`16` + Phase 0 GPG) |

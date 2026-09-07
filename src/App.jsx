@@ -7,6 +7,7 @@ import Login from "./pages/Auth/Login";
 import SignUp from "./pages/Auth/SignUp";
 import ForgotPassword from "./pages/Auth/ForgotPassword";
 import VerifyOtp from "./pages/Auth/VerifyOtp";
+import { ProtectedRoute } from "./pages/Auth/ProtectedRoute";
 import Home from "./pages/Home/Home";
 import StudentsPage from "./pages/app/StudentsPage";
 import StudentDetailPage from "./pages/app/StudentDetailPage";
@@ -26,14 +27,16 @@ export default function App() {
           <Route path="/signup" element={<SignUp />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/verify-otp" element={<VerifyOtp />} />
-          <Route path="/app" element={<DashboardShell />}>
-            <Route index element={<Home />} />
-            <Route path="students" element={<StudentsPage />} />
-            <Route path="students/:id" element={<StudentDetailPage />} />
-            <Route path="seats" element={<SeatsPage />} />
-            <Route path="attendance" element={<AttendancePage />} />
-            <Route path="invoices" element={<InvoicesPage />} />
-            <Route path="settings" element={<SettingsPage />} />
+          <Route path="/app" element={<ProtectedRoute />}>
+            <Route element={<DashboardShell />}>
+              <Route index element={<Home />} />
+              <Route path="students" element={<StudentsPage />} />
+              <Route path="students/:id" element={<StudentDetailPage />} />
+              <Route path="seats" element={<SeatsPage />} />
+              <Route path="attendance" element={<AttendancePage />} />
+              <Route path="invoices" element={<InvoicesPage />} />
+              <Route path="settings" element={<SettingsPage />} />
+            </Route>
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

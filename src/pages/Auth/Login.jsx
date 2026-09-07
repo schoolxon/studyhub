@@ -3,16 +3,18 @@ import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { AuthLayout } from "../../components/auth/AuthLayout";
 import { Button, Field, Input } from "../../components/ui/ui";
+import { useStore } from "../../data/StoreContext";
 
 export default function Login() {
   const navigate = useNavigate();
+  const { login } = useStore();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
-  const handleLogin = (event) => {
+  const handleLogin = async (event) => {
     event.preventDefault();
     const nextErrors = {};
     if (!email) nextErrors.email = "Email is required";
@@ -23,16 +25,20 @@ export default function Login() {
     }
     setErrors({});
     setLoading(true);
-    window.setTimeout(() => {
-      setLoading(false);
+    try {
+      await login(email, password);
       navigate("/app");
-    }, 400);
+    } catch (error) {
+      setErrors({ password: error.message });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <AuthLayout
       title="Welcome back"
-      subtitle="Login to manage seats, students, and billing."
+      subtitle="Demo owner: owner@aarav.test / demo1234"
     >
       <form onSubmit={handleLogin}>
         <Field label="Email Address" htmlFor="email" error={errors.email}>

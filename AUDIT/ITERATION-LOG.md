@@ -108,12 +108,18 @@ FAIL p1-0003-schema (tables missing). FIX 0003 + `05`. Date math / status / rene
 
 ## Stop
 
-P0 open = 0 (P0-37 WONTFIX human). P1 open = 0. P2-32 still OPEN (Q-01). Suite 14/14. See `FINAL-REPORT.md`.
+P0 open = 0 (P0-37 WONTFIX human). P1 open = 0. P2-32 closed (Vite+Fastify+Postgres). Suite 14/14 SQL. See `FINAL-REPORT.md`.
 
 ---
 
 ## Iteration 6 — 2026-09-08 — Vite owner shell (mock data)
 
 Not a Nest rewrite. Replaced placeholder `/app/*` routes with in-memory admission / collect / renew / attendance / seat map. Firebase/MUI deps removed from `package.json`. Firebase `apiKey` still in git history (Q-05). CI workflow builds the Vite app only.
+
+---
+
+## Iteration 7 — 2026-09-08 — Fastify API + Postgres persistence
+
+Q-01 closed by agent (user: decide and don't stop). Created `studyhub` DB, applied `05`+`0003`, seeded Aarav tenant. API uses `studyhub_app` + SET LOCAL. Login/signup/admission/collect/renew/pause/attendance persist. Vite proxies `/v1`.
 
 

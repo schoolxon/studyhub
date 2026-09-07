@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Logo } from "../brand/Logo";
 import { cn } from "../../lib/utils";
+import { useStore } from "../../data/StoreContext";
 
 const navSections = [
   {
@@ -40,6 +41,7 @@ const navSections = [
 export function AppSidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const navigate = useNavigate();
+  const { logout } = useStore();
 
   return (
     <aside
@@ -150,7 +152,10 @@ export function AppSidebar() {
             gap: 8,
           }}
           aria-label="Log out"
-          onClick={() => navigate("/login")}
+          onClick={() => {
+            logout();
+            navigate("/login");
+          }}
         >
           <span className="ui-sidebar-item-icon" style={{ color: "var(--destructive)" }}>
             <LogOut size={14} />

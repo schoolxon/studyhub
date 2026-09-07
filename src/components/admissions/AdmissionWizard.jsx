@@ -1,47 +1,53 @@
-import { useState } from "react";
-import { DEPOSIT_PAISE, PLANS, REGISTRATION_PAISE, ROWS, COLS, SHIFTS, seatNo } from "../../data/seed";
+import { useEffect, useState } from "react";
 import { useStore } from "../../data/StoreContext";
 import { addMonths, todayIso } from "../../lib/dates";
 import { formatInr } from "../../lib/money";
 import { Button, Field, Input, Modal, Select } from "../ui/ui";
 
-const emptyForm = {
-  name: "",
-  mobile: "",
-  guardian: "",
-  shiftId: "morning",
-  seatNo: "",
-  planId: "1m",
-  startDate: todayIso(),
-  discountRupees: "0",
-  payingNowRupees: "",
-  mode: "Cash",
-};
+function blank(shifts, plans) {
+  return {
+    name: "",
+    mobile: "",
+    guardian: "",
+    shiftId: shifts[0]?.id || "",
+    seatNo: "",
+    planId: plans[0]?.id || "",
+    startDate: todayIso(),
+    discountRupees: "0",
+    payingNowRupees: "",
+    mode: "Cash",
+  };
+}
 
 export function AdmissionWizard({ open, onClose, onCreated }) {
-  const { isSeatFree, addAdmission } = useStore();
+  const { isSeatFree, addAdmission, shifts, plans, seats } = useStore();
   const [step, setStep] = useState(1);
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState(() => blank(shifts, plans));
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  const plan = PLANS.find((item) => item.id === form.planId);
+  useEffect(() => {
+    if (!open) return;
+    setStep(1);
+    setError("");
+    setForm(blank(shifts, plans));
+  }, [open, shifts, plans]);
+
+  const plan = plans.find((item) => item.id === form.planId) || plans[0];
   const discountPaise = (Number.parseInt(form.discountRupees || "0", 10) || 0) * 100;
-  const totalPaise = plan.amountPaise + REGISTRATION_PAISE + DEPOSIT_PAISE - discountPaise;
-  const endDate = addMonths(form.startDate || todayIso(), plan.months);
+  const registration = plan?.registrationPaise || 0;
+  const deposit = plan?.depositPaise || 0;
+  const totalPaise = plan ? plan.amountPaise + registration + deposit - discountPaise : 0;
+  const endDate = plan ? addMonths(form.startDate || todayIso(), plan.months || 1) : "";
 
   const patch = (partial) => {
     setError("");
     setForm((prev) => ({ ...prev, ...partial }));
   };
 
-  const reset = () => {
-    setStep(1);
-    setForm({ ...emptyForm, startDate: todayIso() });
-    setError("");
-  };
-
   const close = () => {
-    reset();
+    setStep(1);
+    setForm(blank(shifts, plans));
     onClose();
   };
 
@@ -66,19 +72,25 @@ export function AdmissionWizard({ open, onClose, onCreated }) {
     setStep(3);
   };
 
-  const save = () => {
+  const save = async () => {
+    if (!plan) return;
+    setSaving(true);
     try {
-      addAdmission({
+      const created = await addAdmission({
         ...form,
         payingNow: String((Number.parseInt(form.payingNowRupees || "0", 10) || 0) * 100),
         discountPaise: String(discountPaise),
       });
-      const created = { name: form.name, seatNo: form.seatNo, shiftId: form.shiftId, endDate };
-      reset();
-      onClose();
-      onCreated?.(created);
+      close();
+      onCreated?.({
+        name: form.name,
+        seatNo: created?.seatNo || form.seatNo,
+        endDate: created?.endDate || endDate,
+      });
     } catch (err) {
       setError(err.message);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -88,7 +100,7 @@ export function AdmissionWizard({ open, onClose, onCreated }) {
       onClose={close}
       size="xl"
       title={`New admission — step ${step} of 3`}
-      description="Demo only. Nothing is saved to Postgres."
+      description="Saved to Postgres with GiST seat exclusion and FIFO payment."
       footer={
         <>
           {step > 1 ? (
@@ -111,8 +123,8 @@ export function AdmissionWizard({ open, onClose, onCreated }) {
             </Button>
           ) : null}
           {step === 3 ? (
-            <Button variant="primary" onClick={save}>
-              Save & print receipt
+            <Button variant="primary" onClick={save} disabled={saving || !plan}>
+              {saving ? "Saving…" : "Save & collect"}
             </Button>
           ) : null}
         </>
@@ -135,16 +147,13 @@ export function AdmissionWizard({ open, onClose, onCreated }) {
           <Field label="Guardian mobile" htmlFor="adm-guardian">
             <Input id="adm-guardian" inputMode="numeric" value={form.guardian} onChange={(e) => patch({ guardian: e.target.value })} />
           </Field>
-          <p className="md:col-span-2 text-sm" style={{ color: "var(--muted-foreground)", margin: 0 }}>
-            Photo capture is skipped in this shell.
-          </p>
         </div>
       ) : null}
 
       {step === 2 ? (
         <div>
           <div className="flex flex-wrap gap-2 mb-4">
-            {SHIFTS.map((shift) => (
+            {shifts.map((shift) => (
               <button
                 key={shift.id}
                 type="button"
@@ -157,7 +166,7 @@ export function AdmissionWizard({ open, onClose, onCreated }) {
           </div>
           <Field label="Plan" htmlFor="adm-plan">
             <Select id="adm-plan" value={form.planId} onChange={(e) => patch({ planId: e.target.value })}>
-              {PLANS.map((item) => (
+              {plans.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.name} — {formatInr(item.amountPaise)}
                 </option>
@@ -171,36 +180,32 @@ export function AdmissionWizard({ open, onClose, onCreated }) {
             End date {endDate}. Green seats are free for this shift.
           </p>
           <div className="sh-seat-grid" style={{ marginTop: 12 }}>
-            {ROWS.map((row) =>
-              Array.from({ length: COLS }, (_, index) => {
-                const no = seatNo(row, index + 1);
-                const free = isSeatFree(no, form.shiftId);
-                const selected = form.seatNo === no;
-                return (
-                  <button
-                    key={no}
-                    type="button"
-                    disabled={!free}
-                    className={`sh-seat${free ? " is-free" : " is-held"}${selected ? " is-selected" : ""}`}
-                    onClick={() => patch({ seatNo: no })}
-                  >
-                    {no}
-                  </button>
-                );
-              })
-            )}
+            {seats.map((seat) => {
+              const free = isSeatFree(seat.seatNo, form.shiftId);
+              const selected = form.seatNo === seat.seatNo;
+              return (
+                <button
+                  key={seat.id}
+                  type="button"
+                  disabled={!free}
+                  className={`sh-seat${free ? " is-free" : " is-held"}${selected ? " is-selected" : ""}`}
+                  onClick={() => patch({ seatNo: seat.seatNo })}
+                >
+                  {seat.seatNo}
+                </button>
+              );
+            })}
           </div>
         </div>
       ) : null}
 
-      {step === 3 ? (
+      {step === 3 && plan ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <p style={{ margin: 0 }}>
-            Plan {formatInr(plan.amountPaise)} + registration {formatInr(REGISTRATION_PAISE)} + deposit{" "}
-            {formatInr(DEPOSIT_PAISE)}
+            Plan {formatInr(plan.amountPaise)} + registration {formatInr(registration)} + deposit {formatInr(deposit)}
           </p>
           <p style={{ margin: 0 }}>
-            Seat {form.seatNo} · {SHIFTS.find((s) => s.id === form.shiftId)?.name} · till {endDate}
+            Seat {form.seatNo} · {shifts.find((s) => s.id === form.shiftId)?.name} · till {endDate}
           </p>
           <Field label="Discount (₹)" htmlFor="adm-disc">
             <Input
@@ -214,14 +219,19 @@ export function AdmissionWizard({ open, onClose, onCreated }) {
             <Input id="adm-total" readOnly value={formatInr(Math.max(totalPaise, 0))} />
           </Field>
           <Field label="Paying now (₹)" htmlFor="adm-pay">
-            <Input id="adm-pay" inputMode="numeric" value={form.payingNowRupees} onChange={(e) => patch({ payingNowRupees: e.target.value })} />
+            <Input
+              id="adm-pay"
+              inputMode="numeric"
+              value={form.payingNowRupees}
+              onChange={(e) => patch({ payingNowRupees: e.target.value })}
+            />
           </Field>
           <Field label="Mode" htmlFor="adm-mode">
             <Select id="adm-mode" value={form.mode} onChange={(e) => patch({ mode: e.target.value })}>
               <option>Cash</option>
               <option>UPI</option>
               <option>Card</option>
-              <option>Other</option>
+              <option>Bank</option>
             </Select>
           </Field>
         </div>

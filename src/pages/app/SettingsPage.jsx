@@ -1,14 +1,13 @@
 import { Card, CardBody, CardHeader, Field, Input, PageHeader, Select } from "../../components/ui/ui";
-import { PLANS, SHIFTS } from "../../data/seed";
 import { useStore } from "../../data/StoreContext";
 import { formatInr } from "../../lib/money";
 
 export default function SettingsPage() {
-  const { libraryName, branchName, graceDays, language, updateSettings } = useStore();
+  const { libraryName, branchName, graceDays, language, updateSettings, shifts, plans } = useStore();
 
   return (
     <div className="p-6">
-      <PageHeader title="Settings" description="Demo fields only. SaaS billing and staff RBAC wait for Nest." />
+      <PageHeader title="Settings" description="Saved on the tenant row in Postgres." />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
@@ -17,30 +16,37 @@ export default function SettingsPage() {
             <Field label="Library" htmlFor="set-lib">
               <Input
                 id="set-lib"
-                value={libraryName}
-                onChange={(e) => updateSettings({ libraryName: e.target.value })}
+                defaultValue={libraryName}
+                onBlur={(e) => updateSettings({ libraryName: e.target.value, branchName, graceDays, language })}
               />
             </Field>
             <Field label="Branch" htmlFor="set-br">
               <Input
                 id="set-br"
-                value={branchName}
-                onChange={(e) => updateSettings({ branchName: e.target.value })}
+                defaultValue={branchName}
+                onBlur={(e) => updateSettings({ libraryName, branchName: e.target.value, graceDays, language })}
               />
             </Field>
             <Field label="Grace days" htmlFor="set-grace">
               <Input
                 id="set-grace"
                 type="number"
-                value={graceDays}
-                onChange={(e) => updateSettings({ graceDays: Number(e.target.value) || 0 })}
+                defaultValue={graceDays}
+                onBlur={(e) =>
+                  updateSettings({
+                    libraryName,
+                    branchName,
+                    graceDays: Number(e.target.value) || 0,
+                    language,
+                  })
+                }
               />
             </Field>
             <Field label="Language" htmlFor="set-lang">
               <Select
                 id="set-lang"
                 value={language}
-                onChange={(e) => updateSettings({ language: e.target.value })}
+                onChange={(e) => updateSettings({ libraryName, branchName, graceDays, language: e.target.value })}
               >
                 <option value="en">English</option>
                 <option value="hi">Hindi</option>
@@ -60,7 +66,7 @@ export default function SettingsPage() {
                 </tr>
               </thead>
               <tbody>
-                {SHIFTS.map((shift) => (
+                {shifts.map((shift) => (
                   <tr key={shift.id}>
                     <td>{shift.name}</td>
                     <td>{shift.hours}</td>
@@ -72,7 +78,7 @@ export default function SettingsPage() {
         </Card>
 
         <Card className="lg:col-span-2">
-          <CardHeader title="Fee plans (paise)" />
+          <CardHeader title="Fee plans" />
           <CardBody>
             <table className="ui-table">
               <thead>
@@ -83,7 +89,7 @@ export default function SettingsPage() {
                 </tr>
               </thead>
               <tbody>
-                {PLANS.map((plan) => (
+                {plans.map((plan) => (
                   <tr key={plan.id}>
                     <td>{plan.name}</td>
                     <td>{plan.months}</td>
@@ -92,9 +98,6 @@ export default function SettingsPage() {
                 ))}
               </tbody>
             </table>
-            <p className="text-sm" style={{ color: "var(--muted-foreground)", marginBottom: 0 }}>
-              CRUD against Postgres is Sprint 2 after Q-01.
-            </p>
           </CardBody>
         </Card>
       </div>
