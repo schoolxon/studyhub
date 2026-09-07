@@ -1,0 +1,59 @@
+# StudyHub hostile audit — iteration log
+
+---
+
+## Iteration 0 — 2026-09-07 — evidence only, zero production edits
+
+**Goal:** Seed durable audit files. Read `studyhub-plan/` + working tree. Do not change product code.
+
+**What the repo actually is:**
+
+- Spec: `studyhub-plan/` (22 md + `05-Database-Schema.sql`), version 1.1 text. README still calls the folder `plan_doc/` (P2-38).
+- App on disk: Vite SPA (`package.json` restored), design-system CSS from waste_management, login/signup/dashboard **shell**. No Nest, no Prisma, no Playwright, no Docker compose files, no applied SQL.
+- Git HEAD still contains the old Firebase SPA (`src/firebase/firebase.js` with apiKey).
+- Postgres 18 listens on `127.0.0.1:5432`. No evidence this schema was applied.
+- `.env.local` gitignored; not in history.
+
+**Seed vs actual:**
+
+- P2-23…P2-31, P3-33, P3-35: **document contradictions already resolved in v1.1**. Marked VERIFIED (docs). Not product-verified.
+- P0-01…P0-06, P1-07…P1-12, P1-19, P1-21, P1-22: **written in `05`/`04`/`07`, never applied**. Still OPEN.
+- Still missing from schema/spec: P1-10 `student_requests`, P1-13 refresh storage, P1-18 pause history/hold-charge, P3-34 R2 endpoint, P0-40 `tenants` RLS, P2-32 stack, P0-37 git secrets, P2-38 folder name, P0-36 unapplied schema.
+
+**Tests run:** none (no suite). Failure output: n/a.
+
+**Production diff:** none.
+
+**Next:** P0-40 — RLS policy on `tenants` (failing test: app role SELECT sees all owner_mobile), plus `CREATE ROLE studyhub_app` (P0-41).
+
+---
+
+## Iteration 1 — 2026-09-07 — P0-36 / P0-02 catalog / P0-06 sequential GiST
+
+**UNDERSTAND:** `05-Database-Schema.sql` was documentation. No catalog, so FORCE and GiST were fiction.
+
+**PROVE (before apply)** — empty `studyhub_audit` (created this session):
+
+```
+FAIL
+ - P0-36 students table missing (count=0)
+ - P0-02 students FORCE RLS not true (got empty)
+ - P0-06 no_double_booking missing (count=0)
+```
+
+**FIX:** `psql -v ON_ERROR_STOP=1 -f studyhub-plan/05-Database-Schema.sql` on `studyhub_audit`. Rollback: `AUDIT/migrations/0001_down.sql` or `DROP DATABASE studyhub_audit`.
+
+**VERIFY:**
+- Catalog test first compared boolean to `t`; PG18 returns `true`. Test fixed (not weakened) to accept `t`/`true`.
+- `PASS P0-36/02/06 catalog: students exists, FORCE on, GiST present`
+- Overlap test: Windows `psql -At` appended `INSERT 0 1` to RETURNING; parser fixed.
+- `PASS P0-06 overlapping seat+shift allocation rejected by GiST`
+
+No Nest/Playwright/typecheck/lint suite exists — those checks N/A.
+
+**DOCS:** `AUDIT/migrations/README.md` records 05 as 0001.
+
+**NEW:** P0-41 (`studyhub_app` role missing), P0-42 (concurrent GiST unproven). Confirmed P0-40 on live catalog (`tenants` relrowsecurity=f).
+
+**HUNT:** `invoice_items` FORCE=on; `notification_templates` FORCE=on; occupancy view has JOIN not CROSS JOIN.
+
